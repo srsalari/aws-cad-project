@@ -1,0 +1,710 @@
+Resources:
+  CustomVPC616E3387:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.50.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: WordpressVpcStack/CustomVPC
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/CustomVPC/Resource
+  CustomVPCPublicSubnet1Subnet758D3909:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ""
+      CidrBlock: 10.50.0.0/18
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: Public
+        - Key: aws-cdk:subnet-type
+          Value: Public
+        - Key: Name
+          Value: WordpressVpcStack/CustomVPC/PublicSubnet1
+      VpcId:
+        Ref: CustomVPC616E3387
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/CustomVPC/PublicSubnet1/Subnet
+  CustomVPCPublicSubnet1RouteTableD7678595:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key: Name
+          Value: WordpressVpcStack/CustomVPC/PublicSubnet1
+      VpcId:
+        Ref: CustomVPC616E3387
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/CustomVPC/PublicSubnet1/RouteTable
+  CustomVPCPublicSubnet1RouteTableAssociationCB53C136:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: CustomVPCPublicSubnet1RouteTableD7678595
+      SubnetId:
+        Ref: CustomVPCPublicSubnet1Subnet758D3909
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/CustomVPC/PublicSubnet1/RouteTableAssociation
+  CustomVPCPublicSubnet1DefaultRoute3F6B4A61:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: CustomVPCIGWCB65EB6B
+      RouteTableId:
+        Ref: CustomVPCPublicSubnet1RouteTableD7678595
+    DependsOn:
+      - CustomVPCVPCGW9371D645
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/CustomVPC/PublicSubnet1/DefaultRoute
+  CustomVPCPublicSubnet1EIP573B5F01:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: WordpressVpcStack/CustomVPC/PublicSubnet1
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/CustomVPC/PublicSubnet1/EIP
+  CustomVPCPublicSubnet1NATGateway92AA6F6B:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId:
+        Fn::GetAtt:
+          - CustomVPCPublicSubnet1EIP573B5F01
+          - AllocationId
+      SubnetId:
+        Ref: CustomVPCPublicSubnet1Subnet758D3909
+      Tags:
+        - Key: Name
+          Value: WordpressVpcStack/CustomVPC/PublicSubnet1
+    DependsOn:
+      - CustomVPCPublicSubnet1DefaultRoute3F6B4A61
+      - CustomVPCPublicSubnet1RouteTableAssociationCB53C136
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/CustomVPC/PublicSubnet1/NATGateway
+  CustomVPCPublicSubnet2Subnet9CA8FBEB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 1
+          - Fn::GetAZs: ""
+      CidrBlock: 10.50.64.0/18
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: Public
+        - Key: aws-cdk:subnet-type
+          Value: Public
+        - Key: Name
+          Value: WordpressVpcStack/CustomVPC/PublicSubnet2
+      VpcId:
+        Ref: CustomVPC616E3387
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/CustomVPC/PublicSubnet2/Subnet
+  CustomVPCPublicSubnet2RouteTable253D0D06:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key: Name
+          Value: WordpressVpcStack/CustomVPC/PublicSubnet2
+      VpcId:
+        Ref: CustomVPC616E3387
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/CustomVPC/PublicSubnet2/RouteTable
+  CustomVPCPublicSubnet2RouteTableAssociation7DDF1FE5:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: CustomVPCPublicSubnet2RouteTable253D0D06
+      SubnetId:
+        Ref: CustomVPCPublicSubnet2Subnet9CA8FBEB
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/CustomVPC/PublicSubnet2/RouteTableAssociation
+  CustomVPCPublicSubnet2DefaultRoute00A279CB:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: CustomVPCIGWCB65EB6B
+      RouteTableId:
+        Ref: CustomVPCPublicSubnet2RouteTable253D0D06
+    DependsOn:
+      - CustomVPCVPCGW9371D645
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/CustomVPC/PublicSubnet2/DefaultRoute
+  CustomVPCPublicSubnet2EIP2135ECD3:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: WordpressVpcStack/CustomVPC/PublicSubnet2
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/CustomVPC/PublicSubnet2/EIP
+  CustomVPCPublicSubnet2NATGateway29C19A05:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId:
+        Fn::GetAtt:
+          - CustomVPCPublicSubnet2EIP2135ECD3
+          - AllocationId
+      SubnetId:
+        Ref: CustomVPCPublicSubnet2Subnet9CA8FBEB
+      Tags:
+        - Key: Name
+          Value: WordpressVpcStack/CustomVPC/PublicSubnet2
+    DependsOn:
+      - CustomVPCPublicSubnet2DefaultRoute00A279CB
+      - CustomVPCPublicSubnet2RouteTableAssociation7DDF1FE5
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/CustomVPC/PublicSubnet2/NATGateway
+  CustomVPCPrivateSubnet1SubnetBC3416DA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ""
+      CidrBlock: 10.50.128.0/18
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: Private
+        - Key: aws-cdk:subnet-type
+          Value: Private
+        - Key: Name
+          Value: WordpressVpcStack/CustomVPC/PrivateSubnet1
+      VpcId:
+        Ref: CustomVPC616E3387
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/CustomVPC/PrivateSubnet1/Subnet
+  CustomVPCPrivateSubnet1RouteTable997AB149:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key: Name
+          Value: WordpressVpcStack/CustomVPC/PrivateSubnet1
+      VpcId:
+        Ref: CustomVPC616E3387
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/CustomVPC/PrivateSubnet1/RouteTable
+  CustomVPCPrivateSubnet1RouteTableAssociation1A3C4EE7:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: CustomVPCPrivateSubnet1RouteTable997AB149
+      SubnetId:
+        Ref: CustomVPCPrivateSubnet1SubnetBC3416DA
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/CustomVPC/PrivateSubnet1/RouteTableAssociation
+  CustomVPCPrivateSubnet1DefaultRouteF0DFC019:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: CustomVPCPublicSubnet1NATGateway92AA6F6B
+      RouteTableId:
+        Ref: CustomVPCPrivateSubnet1RouteTable997AB149
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/CustomVPC/PrivateSubnet1/DefaultRoute
+  CustomVPCPrivateSubnet2SubnetA2CC0D16:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 1
+          - Fn::GetAZs: ""
+      CidrBlock: 10.50.192.0/18
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: Private
+        - Key: aws-cdk:subnet-type
+          Value: Private
+        - Key: Name
+          Value: WordpressVpcStack/CustomVPC/PrivateSubnet2
+      VpcId:
+        Ref: CustomVPC616E3387
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/CustomVPC/PrivateSubnet2/Subnet
+  CustomVPCPrivateSubnet2RouteTableBA12A594:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key: Name
+          Value: WordpressVpcStack/CustomVPC/PrivateSubnet2
+      VpcId:
+        Ref: CustomVPC616E3387
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/CustomVPC/PrivateSubnet2/RouteTable
+  CustomVPCPrivateSubnet2RouteTableAssociation1E962379:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: CustomVPCPrivateSubnet2RouteTableBA12A594
+      SubnetId:
+        Ref: CustomVPCPrivateSubnet2SubnetA2CC0D16
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/CustomVPC/PrivateSubnet2/RouteTableAssociation
+  CustomVPCPrivateSubnet2DefaultRoute8266392F:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: CustomVPCPublicSubnet2NATGateway29C19A05
+      RouteTableId:
+        Ref: CustomVPCPrivateSubnet2RouteTableBA12A594
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/CustomVPC/PrivateSubnet2/DefaultRoute
+  CustomVPCIGWCB65EB6B:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: WordpressVpcStack/CustomVPC
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/CustomVPC/IGW
+  CustomVPCVPCGW9371D645:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId:
+        Ref: CustomVPCIGWCB65EB6B
+      VpcId:
+        Ref: CustomVPC616E3387
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/CustomVPC/VPCGW
+  CustomVPCRestrictDefaultSecurityGroupCustomResourceBB168E42:
+    Type: Custom::VpcRestrictDefaultSG
+    Properties:
+      ServiceToken:
+        Fn::GetAtt:
+          - CustomVpcRestrictDefaultSGCustomResourceProviderHandlerDC833E5E
+          - Arn
+      DefaultSecurityGroupId:
+        Fn::GetAtt:
+          - CustomVPC616E3387
+          - DefaultSecurityGroup
+      Account:
+        Ref: AWS::AccountId
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/CustomVPC/RestrictDefaultSecurityGroupCustomResource/Default
+  CustomVpcRestrictDefaultSGCustomResourceProviderRole26592FE0:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+      ManagedPolicyArns:
+        - Fn::Sub: arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: Inline
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:AuthorizeSecurityGroupIngress
+                  - ec2:AuthorizeSecurityGroupEgress
+                  - ec2:RevokeSecurityGroupIngress
+                  - ec2:RevokeSecurityGroupEgress
+                Resource:
+                  - Fn::Join:
+                      - ""
+                      - - "arn:"
+                        - Ref: AWS::Partition
+                        - ":ec2:"
+                        - Ref: AWS::Region
+                        - ":"
+                        - Ref: AWS::AccountId
+                        - :security-group/
+                        - Fn::GetAtt:
+                            - CustomVPC616E3387
+                            - DefaultSecurityGroup
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/Custom::VpcRestrictDefaultSGCustomResourceProvider/Role
+  CustomVpcRestrictDefaultSGCustomResourceProviderHandlerDC833E5E:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket:
+          Fn::Sub: cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}
+        S3Key: 7fa1e366ee8a9ded01fc355f704cff92bfd179574e6f9cfee800a3541df1b200.zip
+      Timeout: 900
+      MemorySize: 128
+      Handler: __entrypoint__.handler
+      Role:
+        Fn::GetAtt:
+          - CustomVpcRestrictDefaultSGCustomResourceProviderRole26592FE0
+          - Arn
+      Runtime:
+        Fn::FindInMap:
+          - LatestNodeRuntimeMap
+          - Ref: AWS::Region
+          - value
+      Description: Lambda function for removing all inbound/outbound rules from the VPC default security group
+    DependsOn:
+      - CustomVpcRestrictDefaultSGCustomResourceProviderRole26592FE0
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/Custom::VpcRestrictDefaultSGCustomResourceProvider/Handler
+      aws:asset:path: asset.7fa1e366ee8a9ded01fc355f704cff92bfd179574e6f9cfee800a3541df1b200
+      aws:asset:property: Code
+  vpcSsmParameterBFD4E9FA:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /AWS/CAD/VPC/ID
+      Type: String
+      Value:
+        Ref: CustomVPC616E3387
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/vpcSsmParameter/Resource
+  ALBSecurityGroup29A3BDEF:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: WordpressVpcStack/ALBSecurityGroup
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          Description: from 0.0.0.0/0:80
+          FromPort: 80
+          IpProtocol: tcp
+          ToPort: 80
+        - CidrIp: 0.0.0.0/0
+          Description: from 0.0.0.0/0:443
+          FromPort: 443
+          IpProtocol: tcp
+          ToPort: 443
+      VpcId:
+        Ref: CustomVPC616E3387
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/ALBSecurityGroup/Resource
+  albSGSsmParameter2FA64197:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /AWS/CAD/ALB/SG/ID
+      Type: String
+      Value:
+        Fn::GetAtt:
+          - ALBSecurityGroup29A3BDEF
+          - GroupId
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/albSGSsmParameter/Resource
+  EC2SecurityGroup05DEE054:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: WordpressVpcStack/EC2SecurityGroup
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          Description: from 0.0.0.0/0:22
+          FromPort: 22
+          IpProtocol: tcp
+          ToPort: 22
+      VpcId:
+        Ref: CustomVPC616E3387
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/EC2SecurityGroup/Resource
+  EC2SecurityGroupfromWordpressVpcStackALBSecurityGroup488003B88014501D9E:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: from WordpressVpcStackALBSecurityGroup488003B8:80
+      FromPort: 80
+      GroupId:
+        Fn::GetAtt:
+          - EC2SecurityGroup05DEE054
+          - GroupId
+      IpProtocol: tcp
+      SourceSecurityGroupId:
+        Fn::GetAtt:
+          - ALBSecurityGroup29A3BDEF
+          - GroupId
+      ToPort: 80
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/EC2SecurityGroup/from WordpressVpcStackALBSecurityGroup488003B8:80
+  EC2SecurityGroupfromWordpressVpcStackALBSecurityGroup488003B844307671D22:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: from WordpressVpcStackALBSecurityGroup488003B8:443
+      FromPort: 443
+      GroupId:
+        Fn::GetAtt:
+          - EC2SecurityGroup05DEE054
+          - GroupId
+      IpProtocol: tcp
+      SourceSecurityGroupId:
+        Fn::GetAtt:
+          - ALBSecurityGroup29A3BDEF
+          - GroupId
+      ToPort: 443
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/EC2SecurityGroup/from WordpressVpcStackALBSecurityGroup488003B8:443
+  ec2SGSsmParameter85E0EC26:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /AWS/CAD/EC2/SG/ID
+      Type: String
+      Value:
+        Fn::GetAtt:
+          - EC2SecurityGroup05DEE054
+          - GroupId
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/ec2SGSsmParameter/Resource
+  RDSSecurityGroup6BF2CF10:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: WordpressVpcStack/RDSSecurityGroup
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      VpcId:
+        Ref: CustomVPC616E3387
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/RDSSecurityGroup/Resource
+  RDSSecurityGroupfromWordpressVpcStackEC2SecurityGroupB62CFA23330673DA4049:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: from WordpressVpcStackEC2SecurityGroupB62CFA23:3306
+      FromPort: 3306
+      GroupId:
+        Fn::GetAtt:
+          - RDSSecurityGroup6BF2CF10
+          - GroupId
+      IpProtocol: tcp
+      SourceSecurityGroupId:
+        Fn::GetAtt:
+          - EC2SecurityGroup05DEE054
+          - GroupId
+      ToPort: 3306
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/RDSSecurityGroup/from WordpressVpcStackEC2SecurityGroupB62CFA23:3306
+  RDSSGSsmParameterFE013403:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /AWS/CAD/RDS/SG/ID
+      Type: String
+      Value:
+        Fn::GetAtt:
+          - RDSSecurityGroup6BF2CF10
+          - GroupId
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/RDSSGSsmParameter/Resource
+  RDSSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: RDS SubnetGroup
+      DBSubnetGroupName: rds-subnet-group
+      SubnetIds:
+        - Ref: CustomVPCPrivateSubnet1SubnetBC3416DA
+        - Ref: CustomVPCPrivateSubnet2SubnetA2CC0D16
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/RDSSubnetGroup/Default
+  RDSSubnetGroupSsmParameter27FE0B95:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /AWS/CAD/RDS/SUBNET/GROUP
+      Type: String
+      Value:
+        Ref: RDSSubnetGroup
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/RDSSubnetGroupSsmParameter/Resource
+  CDKMetadata:
+    Type: AWS::CDK::Metadata
+    Properties:
+      Analytics: v2:deflate64:H4sIAAAAAAAA/32QQWvCQBCFf4v3dVst2LOmIh5agiley2QzSUfNbNiZVSTkv5doSaSHnua9j8fwZuZ29rqwzxO4yNQVx+mJcttmCu5o4CJfLbq5bfeNM0nJ+zQxacxP5LKYM2rPRrXzUfET8hOOfGRLEe8IlDwP4V6st2k/PkA3oHiBq0kDnUFxXLxlxcA4BO5Nft1SFdx3jawmQxcD6XUTfGxuHf4FW64CinRGpO5PDsRVCgFqVAx9ejCdCYXY9t5oWPa2egBdZ3YoPgaHJomivh5tyY/6HZqGuPqTSoM/U4FhBYJmKYKaKVS3XMmJ54L6z3WGfYH2IE/n+Ytd2NnkIETTEFmpRru7zx9ZvNIg0wEAAA==
+    Metadata:
+      aws:cdk:path: WordpressVpcStack/CDKMetadata/Default
+    Condition: CDKMetadataAvailable
+Mappings:
+  LatestNodeRuntimeMap:
+    af-south-1:
+      value: nodejs20.x
+    ap-east-1:
+      value: nodejs20.x
+    ap-northeast-1:
+      value: nodejs20.x
+    ap-northeast-2:
+      value: nodejs20.x
+    ap-northeast-3:
+      value: nodejs20.x
+    ap-south-1:
+      value: nodejs20.x
+    ap-south-2:
+      value: nodejs20.x
+    ap-southeast-1:
+      value: nodejs20.x
+    ap-southeast-2:
+      value: nodejs20.x
+    ap-southeast-3:
+      value: nodejs20.x
+    ap-southeast-4:
+      value: nodejs20.x
+    ap-southeast-5:
+      value: nodejs20.x
+    ap-southeast-7:
+      value: nodejs20.x
+    ca-central-1:
+      value: nodejs20.x
+    ca-west-1:
+      value: nodejs20.x
+    cn-north-1:
+      value: nodejs18.x
+    cn-northwest-1:
+      value: nodejs18.x
+    eu-central-1:
+      value: nodejs20.x
+    eu-central-2:
+      value: nodejs20.x
+    eu-north-1:
+      value: nodejs20.x
+    eu-south-1:
+      value: nodejs20.x
+    eu-south-2:
+      value: nodejs20.x
+    eu-west-1:
+      value: nodejs20.x
+    eu-west-2:
+      value: nodejs20.x
+    eu-west-3:
+      value: nodejs20.x
+    il-central-1:
+      value: nodejs20.x
+    me-central-1:
+      value: nodejs20.x
+    me-south-1:
+      value: nodejs20.x
+    mx-central-1:
+      value: nodejs20.x
+    sa-east-1:
+      value: nodejs20.x
+    us-east-1:
+      value: nodejs20.x
+    us-east-2:
+      value: nodejs20.x
+    us-west-1:
+      value: nodejs20.x
+    us-west-2:
+      value: nodejs20.x
+Conditions:
+  CDKMetadataAvailable:
+    Fn::Or:
+      - Fn::Or:
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - af-south-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - ap-east-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - ap-northeast-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - ap-northeast-2
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - ap-northeast-3
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - ap-south-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - ap-south-2
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - ap-southeast-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - ap-southeast-2
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - ap-southeast-3
+      - Fn::Or:
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - ap-southeast-4
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - ca-central-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - ca-west-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - cn-north-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - cn-northwest-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - eu-central-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - eu-central-2
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - eu-north-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - eu-south-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - eu-south-2
+      - Fn::Or:
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - eu-west-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - eu-west-2
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - eu-west-3
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - il-central-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - me-central-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - me-south-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - sa-east-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - us-east-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - us-east-2
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - us-west-1
+      - Fn::Equals:
+          - Ref: AWS::Region
+          - us-west-2
+Parameters:
+  BootstrapVersion:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /cdk-bootstrap/hnb659fds/version
+    Description: Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]
+
