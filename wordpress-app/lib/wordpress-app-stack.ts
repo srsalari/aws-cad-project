@@ -1,29 +1,21 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import { AutoScalingGroup } from 'aws-cdk-lib/aws-autoscaling';
+import * as rds from 'aws-cdk-lib/aws-rds';
+import { aws_autoscaling as autoscaling } from 'aws-cdk-lib';
 import { aws_elasticloadbalancingv2 as elbv2 } from 'aws-cdk-lib';
 
 export class WordpressAppStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // The code that defines your stack goes here
-
-    // example resource
-    // const queue = new sqs.Queue(this, 'WordpressAppQueue', {
-    //   visibilityTimeout: cdk.Duration.seconds(300)
-    // });
-
-    //  CDK Code for EC2 Launch Template with userdata to install wordpress
-    //  ami-0f214d1b3d031dc53
-    // 	
-    // sg-012843af03647bf7d
-
+    // Your user data script for WordPress
     const EC2UserData = `
       #!/bin/bash
       echo "Running custom user data script"
-      yum install httpd php php-mysql -y
+      amazon-linux-extras enable php7.4
+      sudo yum install -y php php-cli php-fpm php-mysqlnd php-xml php-mbstring php-curl php-zip
+      yum install httpd php-mysql -y
       yum update -y
       cd /var/www/html
       echo "healthy" > healthy.html
@@ -37,34 +29,113 @@ export class WordpressAppStack extends cdk.Stack {
       service httpd start
       chkconfig httpd on
     `;
+
+    // Launch Template
     const ec2LaunchTemplate = new ec2.CfnLaunchTemplate(this, 'EC2LaunchTemplate', {
-      launchTemplateName: "Wordpress-Launch-Template",
-      versionDescription: "v1",
+      launchTemplateName: 'Wordpress-Launch-Template',
+      versionDescription: '$Latest',
       launchTemplateData: {
         instanceType: 't2.micro',
-        imageId: "ami-0f214d1b3d031dc53",
+        imageId: 'ami-0f214d1b3d031dc53',
         userData: cdk.Fn.base64(EC2UserData),
-        securityGroupIds: ["sg-012843af03647bf7d"],
+        securityGroupIds: [
+          cdk.Fn.importValue('Application-EC2-SG-ID'), // Make sure the import value is correct
+        ],
       },
     });
 
-    // ALB 
-    const wordpressALB = new elbv2.CfnLoadBalancer(this, 'WordpressALB', /* all optional props */ {
+    // ALB
+    const wordpressALB = new elbv2.CfnLoadBalancer(this, 'WordpressALB', {
       ipAddressType: 'ipv4',
       scheme: 'internet-facing',
       name: 'WordpressALB',
-      securityGroups: ['sg-0d5f63e0de182b942'], 
-      subnets: ['subnet-01fa1d0b6802ec7f6', 'subnet-0e58ba6fd94207b9b'],
+      securityGroups: [
+        cdk.Fn.importValue('Application-ALB-SG-ID'), // Make sure the import value is correct
+      ],
+      subnets: [
+        'subnet-0f69a80fdb3d0ba9a', // Must be valid
+        'subnet-039838d8dfe0bc108', // Must be valid
+      ],
       type: 'application',
-    
     });
 
-    // ALB - Load Balancer
+    // Target Group
+    const cfnTargetGroup = new elbv2.CfnTargetGroup(this, 'MyCfnTargetGroup', {
+      healthCheckEnabled: true,
+      healthCheckPath: '/healthy.html',
+      healthCheckPort: '80',
+      healthCheckProtocol: 'HTTP',
+      name: 'Wordpress-ALB-Target-Group',
+      port: 80,
+      protocol: 'HTTP',
+      targetType: 'instance',
+      vpcId: cdk.Fn.importValue('Application-VPC-ID'), // Must be valid
+    });
 
-    // ALB - Listener
+    // Listener — note the corrected ARN reference
+    const cfnListener = new elbv2.CfnListener(this, 'MyCfnListener', {
+      defaultActions: [
+        {
+          type: 'forward',
+          targetGroupArn: cfnTargetGroup.attrTargetGroupArn,
+        },
+      ],
+      loadBalancerArn: wordpressALB.attrLoadBalancerArn, // <-- Use property reference
+      port: 80,
+      protocol: 'HTTP',
+    });
 
-    // EC2-Instance Template
+    // Auto Scaling Group
+    const cfnAutoScalingGroup = new autoscaling.CfnAutoScalingGroup(this, 'MyCfnAutoScalingGroup', {
+      maxSize: '20',
+      minSize: '2',
+      // autoScalingGroupName: 'Wordpress-ASG', // Optional
+      desiredCapacity: '2',
+      healthCheckType: 'EC2',
+      launchTemplate: {
+        version: ec2LaunchTemplate.attrLatestVersionNumber,
+        launchTemplateId: ec2LaunchTemplate.attrLaunchTemplateId,
+      },
+      targetGroupArns: [cfnTargetGroup.attrTargetGroupArn],
+      vpcZoneIdentifier: [
+        'subnet-0f69a80fdb3d0ba9a', // Must be valid
+        'subnet-039838d8dfe0bc108'
+      ],
+    });
 
-    // AutoScaling Group
+    // Scaling Policy — reference the ASG's 'ref' instead of a literal name
+    const cfnScalingPolicy = new autoscaling.CfnScalingPolicy(this, 'MyCfnScalingPolicy', {
+      autoScalingGroupName: cfnAutoScalingGroup.ref, // <-- do NOT hardcode "Wordpress-ASG"
+      policyType: 'TargetTrackingScaling',
+      targetTrackingConfiguration: {
+        targetValue: 60,
+        disableScaleIn: false,
+        predefinedMetricSpecification: {
+          predefinedMetricType: 'ASGAverageCPUUtilization',
+        },
+      },
+    });
+
+    // RDS
+    const wordpressRDS = new rds.CfnDBInstance(this, "WordpressRDS", {
+      dbInstanceIdentifier: "wordpress-db",
+      engine: "mysql",
+      dbInstanceClass: "db.t3.micro", 
+      engineVersion: '8.0.40',
+      allocatedStorage: "20", 
+      masterUsername: "admin", 
+      masterUserPassword: "Metro123456", 
+      dbSubnetGroupName: cdk.Fn.importValue('Application-RDS-SUBNET-GROUP-Name'),
+      vpcSecurityGroups:[cdk.Fn.importValue('Application-RDS-SG-ID')],
+      publiclyAccessible: false,
+      backupRetentionPeriod: 7,
+      multiAz: false,
+      dbName: "metrodb" 
+    });
+    new cdk.CfnOutput(this, "ALBDNSName", {
+      value: wordpressALB.attrDnsName,
+      exportName: "Wordpress-ALB-DNS",
+    });
+   
   }
 }

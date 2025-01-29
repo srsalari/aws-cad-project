@@ -11,7 +11,7 @@ import * as autoscaling from 'aws-cdk-lib/aws-autoscaling';
 
 const app = new cdk.App();
 
-const deployment = { "stack" : "V" } 
+const deployment = { "stack" : "A" } 
 
 if (['V'].includes(deployment.stack)) {
     new WordpressVpcStack(app, 'WordpressVpcStack', {
