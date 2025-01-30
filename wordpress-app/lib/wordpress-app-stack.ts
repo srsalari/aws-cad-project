@@ -9,70 +9,89 @@ export class WordpressAppStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // Your user data script for WordPress
-    const EC2UserData = `
-      #!/bin/bash
-      echo "Running custom user data script"
-      amazon-linux-extras enable php7.4
-      sudo yum install -y php php-cli php-fpm php-mysqlnd php-xml php-mbstring php-curl php-zip
-      yum install httpd php-mysql -y
-      yum update -y
-      cd /var/www/html
-      echo "healthy" > healthy.html
-      wget https://wordpress.org/wordpress-6.7.1.tar.gz
-      tar -xzf wordpress-6.7.1.tar.gz
-      cp -r wordpress/* /var/www/html/
-      rm -rf wordpress
-      rm -rf wordpress-6.7.1.tar.gz
-      chmod -R 755 wp-content
-      chown -R apache:apache wp-content
-      service httpd start
-      chkconfig httpd on
-    `;
-
-    // Launch Template
-    const ec2LaunchTemplate = new ec2.CfnLaunchTemplate(this, 'EC2LaunchTemplate', {
-      launchTemplateName: 'Wordpress-Launch-Template',
-      versionDescription: '$Latest',
-      launchTemplateData: {
-        instanceType: 't2.micro',
-        imageId: 'ami-0f214d1b3d031dc53',
-        userData: cdk.Fn.base64(EC2UserData),
-        securityGroupIds: [
-          cdk.Fn.importValue('Application-EC2-SG-ID'), // Make sure the import value is correct
-        ],
-      },
+    /**
+     * =====================
+     *  1) RDS Instance
+     * =====================
+     * Creates a MySQL database instance in your private subnets.
+     * - References the RDS subnet group & security group from the VPC stack.
+     * - Exports the endpoint so your WordPress EC2 instances can connect.
+     */
+    const wordpressRDS = new rds.CfnDBInstance(this, 'WordpressRDS', {
+      dbInstanceIdentifier: 'wordpress-db',
+      engine: 'mysql',
+      engineVersion: '8.0.40',
+      dbInstanceClass: 'db.t3.micro',
+      allocatedStorage: '20',
+      masterUsername: 'admin',
+      masterUserPassword: 'Metro123456',
+      dbSubnetGroupName: cdk.Fn.importValue('Application-RDS-SUBNET-GROUP-NAME'),
+      vpcSecurityGroups: [
+        cdk.Fn.importValue('Application-RDS-SG-ID'),
+      ],
+      publiclyAccessible: false,
+      backupRetentionPeriod: 7,
+      multiAz: false,
+      dbName: 'metrodb',
     });
 
-    // ALB
+    new cdk.CfnOutput(this, 'RDSInstanceEndpoint', {
+      value: wordpressRDS.attrEndpointAddress,
+    });
+
+    /**
+     * =====================
+     *  2) Application Load Balancer (ALB)
+     * =====================
+     * Internet-facing ALB to serve incoming HTTP traffic.
+     * - Uses subnets exported by the VPC stack (public subnets).
+     * - Uses an ALB security group (imported) to allow inbound 80/443.
+     */
     const wordpressALB = new elbv2.CfnLoadBalancer(this, 'WordpressALB', {
       ipAddressType: 'ipv4',
       scheme: 'internet-facing',
-      name: 'WordpressALB',
+      name: 'Wordpress-ALB',
       securityGroups: [
-        cdk.Fn.importValue('Application-ALB-SG-ID'), // Make sure the import value is correct
+        cdk.Fn.importValue('Application-ALB-SG-ID'),
       ],
+      // Instead of hardcoding subnets, use the exported Public Subnet IDs
       subnets: [
-        'subnet-0f69a80fdb3d0ba9a', // Must be valid
-        'subnet-039838d8dfe0bc108', // Must be valid
+        cdk.Fn.importValue('Public-Subnet1-ID'),
+        cdk.Fn.importValue('Public-Subnet2-ID'),
       ],
       type: 'application',
     });
 
-    // Target Group
+    new cdk.CfnOutput(this, 'ALBDNSName', {
+      value: wordpressALB.attrDnsName,
+      exportName: 'Wordpress-ALB-DNS',
+    });
+
+    /**
+     * =====================
+     *  3) ALB Target Group
+     * =====================
+     * Target group for forwarding traffic to EC2 instances on port 80.
+     * Includes a health check path `/healthy.html`.
+     */
     const cfnTargetGroup = new elbv2.CfnTargetGroup(this, 'MyCfnTargetGroup', {
       healthCheckEnabled: true,
       healthCheckPath: '/healthy.html',
       healthCheckPort: '80',
       healthCheckProtocol: 'HTTP',
-      name: 'Wordpress-ALB-Target-Group',
+      name: 'Wordpress-ALB-TG',
       port: 80,
       protocol: 'HTTP',
       targetType: 'instance',
-      vpcId: cdk.Fn.importValue('Application-VPC-ID'), // Must be valid
+      vpcId: cdk.Fn.importValue('Application-VPC-ID'),
     });
 
-    // Listener — note the corrected ARN reference
+    /**
+     * =====================
+     *  4) ALB Listener
+     * =====================
+     * Creates an HTTP listener on port 80, forwarding to the target group above.
+     */
     const cfnListener = new elbv2.CfnListener(this, 'MyCfnListener', {
       defaultActions: [
         {
@@ -80,16 +99,88 @@ export class WordpressAppStack extends cdk.Stack {
           targetGroupArn: cfnTargetGroup.attrTargetGroupArn,
         },
       ],
-      loadBalancerArn: wordpressALB.attrLoadBalancerArn, // <-- Use property reference
+      loadBalancerArn: wordpressALB.attrLoadBalancerArn,
       port: 80,
       protocol: 'HTTP',
     });
 
-    // Auto Scaling Group
+    /**
+     * =====================
+     *  5) User Data Script
+     * =====================
+     * Installs Apache, PHP, and WordPress, then configures WordPress
+     * using the RDS endpoint info. Places a `healthy.html` file for ALB checks.
+     */
+    const dbname = 'metrodb';
+    const password = 'Metro123456';
+    const username = 'admin';
+    const hostname = wordpressRDS.attrEndpointAddress;
+
+    const EC2UserData = `
+      #!/bin/bash
+      echo "Running custom user data script"
+      amazon-linux-extras enable php7.4
+      sudo yum install -y php php-cli php-fpm php-mysqlnd php-xml php-mbstring php-curl php-zip
+      yum install httpd php-mysql -y
+      yum update -y
+
+      # Download & Install WordPress
+      cd /var/www/html
+      echo "healthy" > healthy.html
+      wget https://wordpress.org/wordpress-6.7.1.tar.gz
+      tar -xzf wordpress-6.7.1.tar.gz
+      cp -r wordpress/* /var/www/html/
+      rm -rf wordpress wordpress-6.7.1.tar.gz
+      chmod -R 755 wp-content
+      chown -R apache:apache wp-content
+
+      # Configure WordPress Database
+      mv wp-config-sample.php wp-config.php
+      sed -i 's/database_name_here/${dbname}/g' wp-config.php
+      sed -i 's/username_here/${username}/g' wp-config.php
+      sed -i 's/password_here/${password}/g' wp-config.php
+      sed -i 's/localhost/${hostname}/g' wp-config.php
+
+      # Start Apache on boot
+      service httpd start
+      chkconfig httpd on
+    `;
+
+    /**
+     * =====================
+     *  6) Launch Template
+     * =====================
+     * A launch template referencing our user data, AMI, instance type,
+     * and EC2 security group. The template is then used by the AutoScalingGroup.
+     */
+    const ec2LaunchTemplate = new ec2.CfnLaunchTemplate(this, 'EC2LaunchTemplate', {
+      launchTemplateName: 'Wordpress-Launch-Template',
+      versionDescription: 'v1',
+      launchTemplateData: {
+        instanceType: 't2.micro',
+        // Example AMI for Amazon Linux 2 in a specific region
+        // Replace with your region's latest ID or use SSM to fetch a dynamic ID
+        imageId: 'ami-0d1e3f2707b2b8925',
+        userData: cdk.Fn.base64(EC2UserData),
+        securityGroupIds: [
+          cdk.Fn.importValue('Application-EC2-SG-ID'),
+        ],
+      },
+    });
+    // Add a dependency so the RDS instance is created before the launch template (optional).
+    ec2LaunchTemplate.node.addDependency(wordpressRDS);
+
+    /**
+     * =====================
+     *  7) Auto Scaling Group
+     * =====================
+     * Creates an ASG that uses our launch template. It references private subnets,
+     * associates with the target group, and sets min/max capacity.
+     */
     const cfnAutoScalingGroup = new autoscaling.CfnAutoScalingGroup(this, 'MyCfnAutoScalingGroup', {
       maxSize: '20',
       minSize: '2',
-      // autoScalingGroupName: 'Wordpress-ASG', // Optional
+      autoScalingGroupName: 'Wordpress-ASG',
       desiredCapacity: '2',
       healthCheckType: 'EC2',
       launchTemplate: {
@@ -97,15 +188,22 @@ export class WordpressAppStack extends cdk.Stack {
         launchTemplateId: ec2LaunchTemplate.attrLaunchTemplateId,
       },
       targetGroupArns: [cfnTargetGroup.attrTargetGroupArn],
+      // Use private subnets from the VPC
       vpcZoneIdentifier: [
-        'subnet-0f69a80fdb3d0ba9a', // Must be valid
-        'subnet-039838d8dfe0bc108'
+        cdk.Fn.importValue('Private-Subnet1-ID'),
+        cdk.Fn.importValue('Private-Subnet2-ID'),
       ],
     });
 
-    // Scaling Policy — reference the ASG's 'ref' instead of a literal name
+    /**
+     * =====================
+     *  8) Scaling Policy
+     * =====================
+     * A target-tracking scaling policy that adjusts capacity based on CPU usage.
+     * Example threshold: 60% CPU average triggers scale-out.
+     */
     const cfnScalingPolicy = new autoscaling.CfnScalingPolicy(this, 'MyCfnScalingPolicy', {
-      autoScalingGroupName: cfnAutoScalingGroup.ref, // <-- do NOT hardcode "Wordpress-ASG"
+      autoScalingGroupName: cfnAutoScalingGroup.ref,
       policyType: 'TargetTrackingScaling',
       targetTrackingConfiguration: {
         targetValue: 60,
@@ -115,27 +213,5 @@ export class WordpressAppStack extends cdk.Stack {
         },
       },
     });
-
-    // RDS
-    const wordpressRDS = new rds.CfnDBInstance(this, "WordpressRDS", {
-      dbInstanceIdentifier: "wordpress-db",
-      engine: "mysql",
-      dbInstanceClass: "db.t3.micro", 
-      engineVersion: '8.0.40',
-      allocatedStorage: "20", 
-      masterUsername: "admin", 
-      masterUserPassword: "Metro123456", 
-      dbSubnetGroupName: cdk.Fn.importValue('Application-RDS-SUBNET-GROUP-Name'),
-      vpcSecurityGroups:[cdk.Fn.importValue('Application-RDS-SG-ID')],
-      publiclyAccessible: false,
-      backupRetentionPeriod: 7,
-      multiAz: false,
-      dbName: "metrodb" 
-    });
-    new cdk.CfnOutput(this, "ALBDNSName", {
-      value: wordpressALB.attrDnsName,
-      exportName: "Wordpress-ALB-DNS",
-    });
-   
   }
 }
