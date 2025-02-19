@@ -1,0 +1,31 @@
+
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 18
+    commands:
+      - npm install -g aws-cdk
+      - npm install
+
+  pre_build:
+    commands:
+      - npm run test
+
+  build:
+    commands:
+      - npm run build
+      - cdk synth
+
+  post_build:
+    commands:
+      - cdk deploy --context stack=V --require-approval never
+
+artifacts:
+  files:
+    - cdk.out/**/*
+    - package.json
+    - package-lock.json
+    - README.md
+  discard-paths: yes
