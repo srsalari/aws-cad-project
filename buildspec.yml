@@ -12,8 +12,6 @@ phases:
 
   pre_build:
     commands:
-      - 
-      - cdk bootstrap
       - npm run test
 
   build:
