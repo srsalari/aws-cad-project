@@ -6,11 +6,14 @@ phases:
     runtime-versions:
       nodejs: 18
     commands:
+      - cd wordpress-app
       - npm install -g aws-cdk
       - npm install
 
   pre_build:
     commands:
+      - 
+      - cdk bootstrap
       - npm run test
 
   build:
